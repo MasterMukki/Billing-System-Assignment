@@ -7,17 +7,19 @@ import { Label } from "@/components/ui/label"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { addressInfoSchema, countries } from "@/lib/validations"
 import type { AddressInfoFormData } from "@/lib/validations"
+import { useEffect } from "react"
 
 interface AddressInfoFormProps {
   onSubmit: (data: AddressInfoFormData) => void
   onPrevious: () => void
+  initialData?: AddressInfoFormData
 }
 
-export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) {
-  const { register, handleSubmit, watch, control, getValues, setValue, clearErrors, trigger, formState: { errors } } = useForm<AddressInfoFormData>({
-    resolver: zodResolver(addressInfoSchema) as any ,
+export function AddressInfoForm({ onSubmit, onPrevious, initialData }: AddressInfoFormProps) {
+  const { register, handleSubmit, watch, control, getValues, setValue, clearErrors, trigger, formState: { errors }, reset } = useForm<AddressInfoFormData>({
+    resolver: zodResolver(addressInfoSchema as any),
     mode: "onChange",
-    defaultValues: {
+    defaultValues: initialData || {
       billingAddress: {
         street: "",
         city: "",
@@ -36,13 +38,20 @@ export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) 
     },
   })
 
+  // Update form with initialData when it changes (e.g., navigating back)
+  useEffect(() => {
+    if (initialData) {
+      reset(initialData)
+    }
+  }, [initialData, reset])
+
   const sameAsBilling = watch("sameAsBilling")
 
   const handleSubmitWithValidation = async (data: AddressInfoFormData) => {
     if (data.sameAsBilling) {
       const billingValid = await trigger("billingAddress")
       if (!billingValid) {
-        console.log("[v0] Billing address validation failed")
+        console.log("[AddressInfoForm] Billing address validation failed")
         return
       }
       onSubmit({
@@ -52,7 +61,7 @@ export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) 
     } else {
       const isValid = await trigger()
       if (!isValid) {
-        console.log("[v0] Full form validation failed")
+        console.log("[AddressInfoForm] Full form validation failed")
         return
       }
       onSubmit(data)
@@ -156,13 +165,13 @@ export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) 
                   checked={field.value}
                   onChange={(e) => {
                     const isChecked = e.target.checked
-                    console.log("[v0] Checkbox toggled to:", isChecked)
+                    console.log("[AddressInfoForm] Checkbox toggled to:", isChecked)
                     field.onChange(isChecked)
                     if (isChecked) {
                       const billingAddress = getValues("billingAddress")
                       setValue("shippingAddress", billingAddress)
                       clearErrors("shippingAddress")
-                      console.log("[v0] Copied billing to shipping")
+                      console.log("[AddressInfoForm] Copied billing to shipping")
                     } else {
                       setValue("shippingAddress", {
                         street: "",
@@ -171,7 +180,7 @@ export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) 
                         zipCode: "",
                         country: "India",
                       })
-                      console.log("[v0] Reset shipping address")
+                      console.log("[AddressInfoForm] Reset shipping address")
                     }
                   }}
                   className="h-4 w-4 rounded border border-input bg-background text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -250,7 +259,7 @@ export function AddressInfoForm({ onSubmit, onPrevious }: AddressInfoFormProps) 
                         {countries.map((country) => (
                           <option key={country} value={country}>
                             {country}
-                          </option>
+                        </option>
                         ))}
                       </select>
                     )}

@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Search, Plus, FileText, Eye, Trash2 } from "lucide-react"
+import { Search, Plus, FileText, Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { customerStorage, invoiceStorage, type Customer, type Invoice } from "@/lib/storage"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -42,6 +42,8 @@ export function InvoiceList() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceWithCustomer | null>(null)
+  const [sortKey, setSortKey] = useState<keyof Invoice | "customer" | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function InvoiceList() {
 
   useEffect(() => {
     filterInvoices()
-  }, [invoices, searchTerm, selectedCustomerId, statusFilter])
+  }, [invoices, searchTerm, selectedCustomerId, statusFilter, sortKey, sortDirection])
 
   const loadData = async () => {
     try {
@@ -69,7 +71,7 @@ export function InvoiceList() {
       setInvoices(invoicesWithCustomers)
       setCustomers(customersData)
     } catch (error) {
-      console.error("Failed to load data:", error)
+      console.error("[InvoiceList] Failed to load data:", error)
       toast.error("Failed to load data.")
     } finally {
       setIsLoading(false)
@@ -77,8 +79,9 @@ export function InvoiceList() {
   }
 
   const filterInvoices = () => {
-    let filtered = invoices
+    let filtered = [...invoices]
 
+    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
         (invoice) =>
@@ -88,12 +91,58 @@ export function InvoiceList() {
       )
     }
 
+    // Apply customer filter
     if (selectedCustomerId !== "all") {
       filtered = filtered.filter((invoice) => invoice.customerId === selectedCustomerId)
     }
 
+    // Apply status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((invoice) => invoice.status === statusFilter)
+    }
+
+    // Apply sorting
+    if (sortKey) {
+      filtered.sort((a, b) => {
+        let valueA: string | number | Date
+        let valueB: string | number | Date
+
+        if (sortKey === "customer") {
+          valueA = a.customer.personalInfo.name.toLowerCase()
+          valueB = b.customer.personalInfo.name.toLowerCase()
+        } else if (sortKey === "date" || sortKey === "dueDate") {
+          valueA = new Date(a[sortKey])
+          valueB = new Date(b[sortKey])
+        } else if (sortKey === "total") {
+          valueA = a.total
+          valueB = b.total
+        } else {
+          valueA = a[sortKey]?.toString().toLowerCase() || ""
+          valueB = b[sortKey]?.toString().toLowerCase() || ""
+        }
+
+        // Handle undefined values
+        if (!valueA && !valueB) return 0
+        if (!valueA) return sortDirection === "asc" ? 1 : -1
+        if (!valueB) return sortDirection === "asc" ? -1 : 1
+
+        if (sortKey === "date" || sortKey === "dueDate") {
+          return sortDirection === "asc"
+          //@ts-ignore
+            ? valueA?.getTime() - valueB?.getTime()
+                      //@ts-ignore
+
+            : valueB.getTime() - valueA.getTime()
+        } else if (sortKey === "total") {
+          return sortDirection === "asc"
+            ? (valueA as number) - (valueB as number)
+            : (valueB as number) - (valueA as number)
+        } else {
+          return sortDirection === "asc"
+            ? (valueA as string).localeCompare(valueB as string)
+            : (valueB as string).localeCompare(valueA as string)
+        }
+      })
     }
 
     setFilteredInvoices(filtered)
@@ -112,13 +161,24 @@ export function InvoiceList() {
     }
   }
 
+  const handleSort = (key: keyof Invoice | "customer") => {
+    if (sortKey === key) {
+      // Toggle direction if same key
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      // Set new sort key and default to ascending
+      setSortKey(key)
+      setSortDirection("asc")
+    }
+  }
+
   const handleDeleteInvoice = async (invoiceId: string) => {
     try {
       await invoiceStorage.delete(invoiceId)
       toast.success("Invoice deleted successfully.")
       await loadData()
     } catch (error) {
-      console.error("Failed to delete invoice:", error)
+      console.error("[InvoiceList] Failed to delete invoice:", error)
       toast.error("Failed to delete invoice.")
     }
   }
@@ -228,12 +288,84 @@ export function InvoiceList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("invoiceNumber")}
+                    >
+                      Invoice #
+                      {sortKey === "invoiceNumber" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "invoiceNumber" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("customer")}
+                    >
+                      Customer
+                      {sortKey === "customer" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "customer" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("date")}
+                    >
+                      Date
+                      {sortKey === "date" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "date" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("dueDate")}
+                    >
+                      Due Date
+                      {sortKey === "dueDate" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "dueDate" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("total")}
+                    >
+                      Amount
+                      {sortKey === "total" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "total" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("status")}
+                    >
+                      Status
+                      {sortKey === "status" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "status" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>

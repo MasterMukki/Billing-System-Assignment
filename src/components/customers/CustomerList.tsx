@@ -24,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Eye, Trash2, Users } from "lucide-react"
+import { Search, Plus, Eye, Trash2, Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { customerStorage, type Customer } from "@/lib/storage"
 import { toast } from "sonner"
 
@@ -34,32 +34,35 @@ export function CustomerList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [sortKey, setSortKey] = useState<keyof Customer["personalInfo"] | "location" | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   useEffect(() => {
     loadCustomers()
   }, [])
 
   useEffect(() => {
-    filterCustomers()
-  }, [customers, searchTerm])
+    filterAndSortCustomers()
+  }, [customers, searchTerm, sortKey, sortDirection])
 
   const loadCustomers = async () => {
     try {
       setIsLoading(true)
       const data = await customerStorage.getAll()
-      console.log("[v0] Loaded customers:", data)
+      console.log("[CustomerList] Loaded customers:", data)
       setCustomers(data)
     } catch (error) {
-      console.error("Failed to load customers:", error)
+      console.error("[CustomerList] Failed to load customers:", error)
       toast.error("Failed to load customers.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const filterCustomers = () => {
-    let filtered = customers
+  const filterAndSortCustomers = () => {
+    let filtered = [...customers]
 
+    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
         (customer) =>
@@ -69,18 +72,54 @@ export function CustomerList() {
       )
     }
 
+    // Apply sorting
+    if (sortKey) {
+      filtered.sort((a, b) => {
+        let valueA: string | undefined
+        let valueB: string | undefined
+
+        if (sortKey === "location") {
+          valueA = `${a.addressInfo.billingAddress.city}, ${a.addressInfo.billingAddress.state}`.toLowerCase()
+          valueB = `${b.addressInfo.billingAddress.city}, ${b.addressInfo.billingAddress.state}`.toLowerCase()
+        } else {
+          valueA = a.personalInfo[sortKey]?.toLowerCase()
+          valueB = b.personalInfo[sortKey]?.toLowerCase()
+        }
+
+        // Handle undefined values
+        if (!valueA && !valueB) return 0
+        if (!valueA) return sortDirection === "asc" ? 1 : -1
+        if (!valueB) return sortDirection === "asc" ? -1 : 1
+
+        return sortDirection === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA)
+      })
+    }
+
     setFilteredCustomers(filtered)
   }
 
+  const handleSort = (key: keyof Customer["personalInfo"] | "location") => {
+    if (sortKey === key) {
+      // Toggle direction if same key
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      // Set new sort key and default to ascending
+      setSortKey(key)
+      setSortDirection("asc")
+    }
+  }
+
   const handleDeleteCustomer = async (customerId: string) => {
-      try {
-        await customerStorage.delete(customerId)
-        await loadCustomers()
-        toast.success("Customer deleted successfully.")
-      } catch (error) {
-        console.error("Failed to delete customer:", error)
-        toast.error("Failed to delete customer.")
-      }
+    try {
+      await customerStorage.delete(customerId)
+      await loadCustomers()
+      toast.success("Customer deleted successfully.")
+    } catch (error) {
+      console.error("[CustomerList] Failed to delete customer:", error)
+      toast.error("Failed to delete customer.")
+    }
   }
 
   if (isLoading) {
@@ -155,10 +194,58 @@ export function CustomerList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("name")}
+                    >
+                      Name
+                      {sortKey === "name" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "name" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("email")}
+                    >
+                      Email
+                      {sortKey === "email" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "email" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("phone")}
+                    >
+                      Phone
+                      {sortKey === "phone" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "phone" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2"
+                      onClick={() => handleSort("location")}
+                    >
+                      Location
+                      {sortKey === "location" && (
+                        sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                      {sortKey !== "location" && <ArrowUpDown className="h-4 w-4" />}
+                    </Button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -280,7 +367,7 @@ export function CustomerList() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete  the customer
+                                This action cannot be undone. This will permanently delete the customer.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

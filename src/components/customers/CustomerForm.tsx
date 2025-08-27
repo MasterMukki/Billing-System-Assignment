@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import { z } from "zod"
 import { customerStorage } from "@/lib/storage"
 import type { PersonalInfoFormData, AddressInfoFormData } from "@/lib/validations"
+import { customerSchema } from "@/lib/validations"
 import { ProgressSteps } from "./ProgressSteps"
 import { PersonalInfoForm } from "./PersonalInfoForm"
 import { AddressInfoForm } from "./AddressInfoForm"
@@ -16,33 +18,54 @@ export function CustomerForm() {
   const navigate = useNavigate()
 
   const handlePersonalSubmit = async (data: PersonalInfoFormData) => {
-    console.log("[v0] Personal form submitted:", data)
+    console.log("[CustomerForm] Personal form submitted:", data)
     setPersonalData(data)
     setCurrentStep(2)
   }
 
   const handleAddressSubmit = async (data: AddressInfoFormData) => {
-    console.log("[v0] Address form submitted:", data)
+    console.log("[CustomerForm] Address form submitted:", data)
     setAddressData(data)
     setCurrentStep(3)
   }
 
   const handleFinalSubmit = async () => {
-    if (!personalData || !addressData) return
+    if (!personalData || !addressData) {
+      console.log("[CustomerForm] Missing personalData or addressData")
+      toast.error("Please complete all form steps")
+      return
+    }
 
     setIsSubmitting(true)
     try {
-      const customer = await customerStorage.create({
+      const customerData = {
         personalInfo: personalData,
-        addressInfo: addressData as any,
-      })
+        addressInfo: addressData,
+      }
 
-      console.log("[v0] Customer created successfully:", customer)
+      // Validate with customerSchema
+      const validatedData = await customerSchema.parseAsync(customerData)
+      console.log("[CustomerForm] Validated customer data:", validatedData)
+
+      const customer = await customerStorage.create(validatedData as any)
+      console.log("[CustomerForm] Customer created successfully:", customer)
       toast.success("Customer created successfully!")
-      navigate('/customers')
+      navigate("/customers")
     } catch (error) {
-      console.error("[v0] Failed to create customer:", error)
-      toast.error("Failed to create customer. Please try again.")
+      console.error("[CustomerForm] Failed to create customer:", error)
+      if (error instanceof z.ZodError) {
+        //@ts-ignore
+        error.errors.forEach((err) => {
+          if (err.path.join(".") === "personalInfo.email") {
+            toast.error(err.message)
+            setCurrentStep(1) // Go back to personal info step for email errors
+          } else {
+            toast.error(`Validation error: ${err.message}`)
+          }
+        })
+      } else {
+        toast.error("Failed to create customer. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -53,13 +76,14 @@ export function CustomerForm() {
       <ProgressSteps currentStep={currentStep} />
       
       {currentStep === 1 && (
-        <PersonalInfoForm onSubmit={handlePersonalSubmit} />
+        <PersonalInfoForm onSubmit={handlePersonalSubmit} initialData={personalData as any} />
       )}
       
       {currentStep === 2 && (
         <AddressInfoForm 
           onSubmit={handleAddressSubmit} 
           onPrevious={() => setCurrentStep(1)}
+          initialData={addressData as any}
         />
       )}
       

@@ -7,23 +7,32 @@ import NewCustomer from "./pages/NewCustomer"
 import Invoices from "./pages/Invoices"
 import NewInvoice from "./pages/NewInvoice"
 import "./index.css"
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 import LoadingFallback from "./components/LoadingFallback"
 import { Toaster } from "sonner"
+import { cn } from "./lib/utils"
 
 function App() {
+  // State for desktop sidebar collapsed/expanded
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   return (
     <>
       <Toaster 
-      position="top-right" 
-      richColors 
-      closeButton 
-      duration={3000} 
-    />
+        position="top-right" 
+        richColors 
+        closeButton 
+        duration={3000} 
+      />
       <Router>
         <div className="flex h-screen bg-background">
-          <Sidebar />
-          <div className="flex flex-1 flex-col min-w-0 md:ml-64 transition-all duration-300 main-content">
+          <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+          <div
+            className={cn(
+              "flex flex-1 flex-col min-w-0 transition-all duration-300 main-content",
+              isCollapsed ? "lg:ml-[75px] md:ml-[75px]" : "md:ml-64"
+            )}
+          >
             <Header />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
               <Suspense fallback={<LoadingFallback />}>

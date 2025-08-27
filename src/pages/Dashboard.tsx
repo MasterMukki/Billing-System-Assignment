@@ -83,7 +83,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page header with title and actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-start md:justify-between gap-5 md:gap-2">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="flex gap-2">
           <Link to="/customers/new">

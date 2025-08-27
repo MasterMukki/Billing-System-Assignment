@@ -1,22 +1,9 @@
-/**
- * Sidebar Component
- * Main navigation sidebar with collapsible menu and responsive design
- *
- * Features:
- * - Collapsible sidebar navigation (mobile and desktop)
- * - Active route highlighting
- * - Mobile-responsive design
- * - Smooth animations and transitions
- * - Icon-based navigation items
- * - Desktop collapse/expand functionality
- */
-
-import { useState } from "react"
 import { useLocation, Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { Home, Users, FileText, Plus, Receipt, X, Menu, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState } from "react"
 
 // Navigation items configuration
 const navigation = [
@@ -31,11 +18,14 @@ const navigation = [
  * Main Sidebar component
  * Provides navigation menu with collapsible functionality
  */
-export function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+  setIsCollapsed: (val: boolean) => void;
+}
+
+export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   // State for mobile menu open/close
   const [isOpen, setIsOpen] = useState(false)
-  // State for desktop sidebar collapsed/expanded
-  const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Get current location for active route highlighting
   const location = useLocation()
@@ -75,7 +65,7 @@ export function Sidebar() {
       {/* Main sidebar container */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 transform bg-white border-r border-gray-200 transition-all duration-300 ease-in-out shadow-lg sidebar",
+          "fixed inset-y-0 left-0 z-50 transform bg-white border-r border-gray-200 transition-all duration-300 ease-in-out sidebar",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "md:translate-x-0",
           isCollapsed ? "md:w-16" : "md:w-64"
@@ -84,10 +74,12 @@ export function Sidebar() {
         <div className="flex h-full flex-col">
           {/* Sidebar header with logo and close button */}
           <div className="flex h-16 items-center px-4 md:px-6 border-b border-gray-200">
-            <h1 className={cn(
-              "text-xl font-bold text-gray-900 transition-all duration-300",
-              isCollapsed ? "md:hidden" : "md:block"
-            )}>
+            <h1
+              className={cn(
+                "text-xl font-bold text-gray-900 transition-all duration-300",
+                isCollapsed ? "md:hidden" : "md:block"
+              )}
+            >
               BillManager
             </h1>
             <div className="ml-auto flex items-center gap-2">
@@ -130,17 +122,17 @@ export function Sidebar() {
                     onClick={closeSidebar}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 hover:text-gray-900",
-                      isActive
-                        ? "bg-blue-600 text-white"
-                        : "text-gray-700"
+                      isActive ? "bg-blue-600 text-white" : "text-gray-700"
                     )}
                     title={isCollapsed ? item.name : undefined}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
-                    <span className={cn(
-                      "transition-all duration-300",
-                      isCollapsed ? "md:hidden" : "md:block"
-                    )}>
+                    <span
+                      className={cn(
+                        "transition-all duration-300",
+                        isCollapsed ? "md:hidden" : "md:block"
+                      )}
+                    >
                       {item.name}
                     </span>
                   </Link>
@@ -151,18 +143,20 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Mobile menu button - only visible on mobile */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSidebar}
-          aria-label="Open sidebar"
-          className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg"
-        >
-          <Menu className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Mobile menu button - only visible on mobile when sidebar is closed */}
+      {!isOpen && (
+        <div className="md:hidden fixed top-4 left-4 z-50">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            aria-label="Open sidebar"
+            className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </>
   )
 }

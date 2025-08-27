@@ -140,7 +140,7 @@ export function InvoiceForm({ customerId }: InvoiceFormProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-6">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
-        <div className="flex items-center justify-between">
+        <div className="flex-col gap-10 items-start justify-start md:flex-row md:items-center md:justify-between ">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <FileText className="h-8 w-8 text-blue-600" />
@@ -148,7 +148,7 @@ export function InvoiceForm({ customerId }: InvoiceFormProps) {
             </h1>
             <p className="text-gray-600 mt-2">Generate a professional invoice for your customer</p>
           </div>
-          <div className="text-right">
+          <div className="md:text-right text-left">
             <div className="text-sm text-gray-500">Invoice #</div>
             <div className="text-lg font-mono font-bold">INV-{Date.now()}</div>
           </div>
